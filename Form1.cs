@@ -10,13 +10,13 @@ using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
 
-
 namespace MapView
 {
     public partial class Form1 : Form
     {
         byte[] databyte = new byte[0x396C]; //sized for the EO4+ arrays even if it's EO3 mode. is there a better way?
         int dangerstate = 0;
+        int groupsstate = 0;
         int eo4state = 0;
         int ymdpos = 0;
         int floortype = 0;
@@ -26,14 +26,17 @@ namespace MapView
         int floorchaos = 0;
         int[] currentcell = new int[2] { 0, 0 };
         List<TextBox> textboxes = new List<TextBox>();
+        List<int> encounts = new List<int>();
         public Form1()
         {
             InitializeComponent();
             textboxes.Add(typeBox); textboxes.Add(valueBox); textboxes.Add(encBox); textboxes.Add(dangerBox); textboxes.Add(chaosBox); //populate a list for easy tracking of the boxes
             button1.Click += new EventHandler(button1_Click);
+            button2.Click += new EventHandler(button2_Click);
             map.CellClick += new DataGridViewCellEventHandler(map_CellClick);
             dangerCBox.CheckedChanged += new EventHandler(dangerCBox_CheckedChanged);
             EO4Box.CheckedChanged += new EventHandler(EO4Box_CheckedChanged);
+            groupsBox.CheckedChanged += new EventHandler(groupsBox_CheckedChanged);
             typeBox.KeyDown += new KeyEventHandler(typeBox_KeyDown); //can't really use the list here, but it's still useful
             valueBox.KeyDown += new KeyEventHandler(valueBox_KeyDown);
             encBox.KeyDown += new KeyEventHandler(encBox_KeyDown);
@@ -64,13 +67,26 @@ namespace MapView
                 eo4state = 0;
             }
         }
+        private void groupsBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (groupsstate == 0)
+            {
+                groupsstate = 1;
+                InitializeMapCells();
+            }
+            else
+            {
+                groupsstate = 0;
+                InitializeMapCells();
+            }
+        }
         private void button1_Click(object sender, EventArgs e) //load a .ymd
         {
             OpenFileDialog openFileDialog1 = new OpenFileDialog
             {
                 Filter = ".ymd File|*.ymd",
                 Title = "Select a .ymd File",
-                InitialDirectory = "D:\\Emulation\\eo3files\\data\\Data\\@Target\\Data\\MapDat\\Ymd" //should probably store the last directory but fuck it
+                InitialDirectory = "D:\\Emulation\\citra\\PackEnglishV5.7\\PackHack\\EO2U\\ExtractedRomFS\\mori2r\\mapdat\\ymd" //should probably store the last directory but fuck it
             };
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
             {
@@ -80,6 +96,7 @@ namespace MapView
                     {
                         ymdfile.BaseStream.Seek(0x90, SeekOrigin.Begin);
                         ymdfile.Read(databyte, 0, 0x20D0);
+                        CreateEncountList();
                         InitializeMapCells();
                     }
                     else
@@ -90,6 +107,24 @@ namespace MapView
                     }
                 }
 
+            }
+        }
+        private void button2_Click(object sender, EventArgs e) //save as
+        {
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog
+            {
+                Filter = "partial .ymd File|*.pymd",
+                Title = "Save as...",
+                InitialDirectory = "D:\\Emulation\\EO2UR\\EO2UR\\pymd"
+            };
+            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                byte[] eo3format = new Byte[0x20D0];
+                for (int i = 0; i < eo3format.Length; i++)
+                {
+                    eo3format[i] = databyte[i];
+                }
+                File.WriteAllBytes(saveFileDialog1.FileName, eo3format);
             }
         }
         private void map_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -130,7 +165,7 @@ namespace MapView
             {
                 e.SuppressKeyPress = true;
                 ushort dataentry = 0;
-                if (ushort.TryParse(textboxes[id].Text, out dataentry)) //textboxes[id] lets us get the correct textbox without needing lots of repeat code
+                if (ushort.TryParse(textboxes[id].Text, System.Globalization.NumberStyles.HexNumber, null, out dataentry)) //textboxes[id] lets us get the correct textbox without needing lots of repeat code
                 {
                     dataentry = Convert.ToUInt16(textboxes[id].Text, 16);
                     SetMapDataForTile(currentcell[0], currentcell[1], id, dataentry); //id is which one we fill
@@ -157,7 +192,21 @@ namespace MapView
                 column.SortMode = DataGridViewColumnSortMode.NotSortable;
             }
         }
-
+        private void CreateEncountList() //EO3 only because I don't care
+        {
+            int pos = 0;
+            encounts.Clear();
+            for (int x = 0; x < 1050; x++)
+            {
+                floorencount = 0;
+                pos = 2 + (x * 8);
+                int encval = databyte[pos];
+                if (!encounts.Contains(encval))
+                {
+                    encounts.Add(encval);
+                }
+            }
+        }
         private void GetMapDataForTile(int x, int y)
         {
             if (eo4state == 0)
@@ -200,7 +249,7 @@ namespace MapView
             byte[] b = new byte[2];
             b[0] = (byte)value;
             b[1] = (byte)(((uint)value >> 8) & 0xFF);
-            Debug.WriteLine(b[0]); Debug.WriteLine(b[1]);
+            //Debug.WriteLine(b[0]); Debug.WriteLine(b[1]);
             if (eo4state == 0)
             {
                 ymdpos = (x * 8 + (y * 0x118));
@@ -262,38 +311,42 @@ namespace MapView
         {
             map.CellBorderStyle = DataGridViewCellBorderStyle.None; //no borders
             map.DefaultCellStyle.Font = new Font("Calibri", 11F, GraphicsUnit.Pixel); //font
-            DataGridViewCellStyle styleOOB = new DataGridViewCellStyle();           styleOOB.BackColor = Color.FromArgb(50, 50, 50);
-            DataGridViewCellStyle styleWall = new DataGridViewCellStyle();          styleWall.BackColor = Color.FromArgb(85, 85, 85);
-            DataGridViewCellStyle styleNormal = new DataGridViewCellStyle();        styleNormal.BackColor = Color.White;
-            DataGridViewCellStyle styleDamage = new DataGridViewCellStyle();        styleDamage.BackColor = Color.Red;
-            DataGridViewCellStyle styleSlide = new DataGridViewCellStyle();         styleSlide.BackColor = Color.Green;
-            DataGridViewCellStyle styleTrap = new DataGridViewCellStyle();          styleTrap.BackColor = Color.Black;
-            DataGridViewCellStyle styleForce = new DataGridViewCellStyle();         styleForce.BackColor = Color.Chartreuse;
-            DataGridViewCellStyle styleMud = new DataGridViewCellStyle();           styleMud.BackColor = Color.SaddleBrown;
-            DataGridViewCellStyle styleNoMap = new DataGridViewCellStyle();         styleNoMap.BackColor = Color.LightGray;
-            DataGridViewCellStyle styleUnknown = new DataGridViewCellStyle();       styleUnknown.BackColor = Color.Blue;
-            DataGridViewCellStyle styleSpinner = new DataGridViewCellStyle();       styleSpinner.BackColor = Color.LightYellow;
-            DataGridViewCellStyle styleCampsite = new DataGridViewCellStyle();      styleCampsite.BackColor = Color.PaleVioletRed;
-            DataGridViewCellStyle styleRiver = new DataGridViewCellStyle();         styleRiver.BackColor = Color.RoyalBlue;
-            DataGridViewCellStyle styleImpassible = new DataGridViewCellStyle();    styleImpassible.BackColor = Color.Gray;
-            DataGridViewCellStyle styleDoor = new DataGridViewCellStyle();          styleDoor.BackColor = Color.PowderBlue;
-            DataGridViewCellStyle stylePole = new DataGridViewCellStyle();          stylePole.BackColor = Color.Pink;
-            DataGridViewCellStyle styleStairs = new DataGridViewCellStyle();        styleStairs.BackColor = Color.Cyan;
-            DataGridViewCellStyle styleChest = new DataGridViewCellStyle();         styleChest.BackColor = Color.FromArgb(177, 156, 217);
-            DataGridViewCellStyle styleCrevice = new DataGridViewCellStyle();       styleCrevice.BackColor = Color.FromArgb(122, 107, 87);
-            DataGridViewCellStyle styleShutters = new DataGridViewCellStyle();      styleShutters.BackColor = Color.Silver;
-            DataGridViewCellStyle styleLockedDoor = new DataGridViewCellStyle();    styleLockedDoor.BackColor = Color.FromArgb(128, 64, 192);
-            DataGridViewCellStyle styleTeleport = new DataGridViewCellStyle();      styleTeleport.BackColor = Color.DarkCyan;
+            DataGridViewCellStyle styleOOB = new DataGridViewCellStyle(); styleOOB.BackColor = Color.FromArgb(50, 50, 50);
+            DataGridViewCellStyle styleWall = new DataGridViewCellStyle(); styleWall.BackColor = Color.FromArgb(85, 85, 85);
+            DataGridViewCellStyle styleNormal = new DataGridViewCellStyle(); styleNormal.BackColor = Color.White;
+            DataGridViewCellStyle styleDamage = new DataGridViewCellStyle(); styleDamage.BackColor = Color.Red;
+            DataGridViewCellStyle styleSlide = new DataGridViewCellStyle(); styleSlide.BackColor = Color.Green;
+            DataGridViewCellStyle styleTrap = new DataGridViewCellStyle(); styleTrap.BackColor = Color.Black;
+            DataGridViewCellStyle styleForce = new DataGridViewCellStyle(); styleForce.BackColor = Color.Chartreuse;
+            DataGridViewCellStyle styleMud = new DataGridViewCellStyle(); styleMud.BackColor = Color.SaddleBrown;
+            DataGridViewCellStyle styleNoMap = new DataGridViewCellStyle(); styleNoMap.BackColor = Color.LightGray;
+            DataGridViewCellStyle styleUnknown = new DataGridViewCellStyle(); styleUnknown.BackColor = Color.Blue;
+            DataGridViewCellStyle styleSpinner = new DataGridViewCellStyle(); styleSpinner.BackColor = Color.LightYellow;
+            DataGridViewCellStyle styleCampsite = new DataGridViewCellStyle(); styleCampsite.BackColor = Color.PaleVioletRed;
+            DataGridViewCellStyle styleRiver = new DataGridViewCellStyle(); styleRiver.BackColor = Color.RoyalBlue;
+            DataGridViewCellStyle styleImpassible = new DataGridViewCellStyle(); styleImpassible.BackColor = Color.Gray;
+            DataGridViewCellStyle styleDoor = new DataGridViewCellStyle(); styleDoor.BackColor = Color.PowderBlue;
+            DataGridViewCellStyle stylePole = new DataGridViewCellStyle(); stylePole.BackColor = Color.Pink;
+            DataGridViewCellStyle styleStairs = new DataGridViewCellStyle(); styleStairs.BackColor = Color.Cyan;
+            DataGridViewCellStyle styleChest = new DataGridViewCellStyle(); styleChest.BackColor = Color.FromArgb(177, 156, 217);
+            DataGridViewCellStyle styleCrevice = new DataGridViewCellStyle(); styleCrevice.BackColor = Color.FromArgb(122, 107, 87);
+            DataGridViewCellStyle styleShutters = new DataGridViewCellStyle(); styleShutters.BackColor = Color.Silver;
+            DataGridViewCellStyle styleLockedDoor = new DataGridViewCellStyle(); styleLockedDoor.BackColor = Color.FromArgb(128, 64, 192);
+            DataGridViewCellStyle styleTeleport = new DataGridViewCellStyle(); styleTeleport.BackColor = Color.DarkCyan;
             DataGridViewCellStyle styleShutterButton = new DataGridViewCellStyle(); styleShutterButton.BackColor = Color.OliveDrab;
-            DataGridViewCellStyle styleWhirlpool = new DataGridViewCellStyle();     styleWhirlpool.BackColor = Color.LightSalmon;
-            DataGridViewCellStyle styleSeaweed = new DataGridViewCellStyle();       styleSeaweed.BackColor = Color.Aquamarine;
-            DataGridViewCellStyle styleRocks = new DataGridViewCellStyle();         styleRocks.BackColor = Color.DarkGray;
-            DataGridViewCellStyle styleEye = new DataGridViewCellStyle();           styleEye.BackColor = Color.LightGreen;
-            DataGridViewCellStyle styleDanger1 = new DataGridViewCellStyle();       styleDanger1.BackColor = Color.FromArgb(255, 255, 128);
-            DataGridViewCellStyle styleDanger2 = new DataGridViewCellStyle();       styleDanger2.BackColor = Color.FromArgb(255, 192, 0);
-            DataGridViewCellStyle styleDanger3 = new DataGridViewCellStyle();       styleDanger3.BackColor = Color.FromArgb(255, 128, 0);
-            DataGridViewCellStyle styleDanger4 = new DataGridViewCellStyle();       styleDanger4.BackColor = Color.FromArgb(255, 0, 0);
-            DataGridViewCellStyle styleDanger5 = new DataGridViewCellStyle();       styleDanger5.BackColor = Color.FromArgb(128, 0, 0);
+            DataGridViewCellStyle styleWhirlpool = new DataGridViewCellStyle(); styleWhirlpool.BackColor = Color.LightSalmon;
+            DataGridViewCellStyle styleSeaweed = new DataGridViewCellStyle(); styleSeaweed.BackColor = Color.Aquamarine;
+            DataGridViewCellStyle styleRocks = new DataGridViewCellStyle(); styleRocks.BackColor = Color.DarkGray;
+            DataGridViewCellStyle styleEye = new DataGridViewCellStyle(); styleEye.BackColor = Color.LightGreen;
+            DataGridViewCellStyle styleDanger1 = new DataGridViewCellStyle(); styleDanger1.BackColor = Color.FromArgb(255, 255, 128);
+            DataGridViewCellStyle styleDanger2 = new DataGridViewCellStyle(); styleDanger2.BackColor = Color.FromArgb(255, 192, 0);
+            DataGridViewCellStyle styleDanger3 = new DataGridViewCellStyle(); styleDanger3.BackColor = Color.FromArgb(255, 128, 0);
+            DataGridViewCellStyle styleDanger4 = new DataGridViewCellStyle(); styleDanger4.BackColor = Color.FromArgb(255, 0, 0);
+            DataGridViewCellStyle styleDanger5 = new DataGridViewCellStyle(); styleDanger5.BackColor = Color.FromArgb(192, 0, 0);
+            DataGridViewCellStyle styleDanger6 = new DataGridViewCellStyle(); styleDanger6.BackColor = Color.FromArgb(160, 0, 0);
+            DataGridViewCellStyle styleDanger7 = new DataGridViewCellStyle(); styleDanger7.BackColor = Color.FromArgb(128, 0, 0);
+            DataGridViewCellStyle styleDanger8 = new DataGridViewCellStyle(); styleDanger8.BackColor = Color.FromArgb(96, 0, 0);
+            DataGridViewCellStyle styleDanger9 = new DataGridViewCellStyle(); styleDanger9.BackColor = Color.FromArgb(64, 0, 0);
             GetMapDataForTile(x, y);
             map[x, y].Value = floorencount.ToString("X2"); //write this first so it can be overridden if needed
             switch (floortype) //handle the floor colour
@@ -434,6 +487,67 @@ namespace MapView
                             case 5:
                                 map[x, y].Style = styleDanger5;
                                 break;
+                            case 6:
+                                map[x, y].Style = styleDanger6;
+                                break;
+                            case 7:
+                                map[x, y].Style = styleDanger7;
+                                break;
+                            case 8:
+                                map[x, y].Style = styleDanger8;
+                                break;
+                            case 9:
+                                map[x, y].Style = styleDanger9;
+                                break;
+                        }
+                        break;
+                }
+            }
+            if (groupsstate == 1)
+            {
+                int encounttotal = encounts.Count();
+                //Debug.WriteLine(encounttotal);
+                switch (floortype)
+                {
+                    default:
+                        break;
+                    case 0x1:
+                    case 0x2:
+                    case 0xA:
+                    case 0xB:
+                    case 0xD:
+                    case 0x1D:
+                        if (floorencount == encounts[0])
+                        {
+                            map[x, y].Style = styleDanger1;
+                        }
+                        else if (floorencount == encounts[1])
+                        {
+                            map[x, y].Style = styleCampsite;
+                        }
+                        else if (floorencount == encounts[2])
+                        {
+                            map[x, y].Style = styleDanger5;
+                        }
+                        else if (floorencount == encounts[3])
+                        {
+                            map[x, y].Style = styleWhirlpool;
+                        }
+                        else if (floorencount == encounts[4])
+                        {
+                            map[x, y].Style = styleUnknown;
+                        }
+                        else if (floorencount == encounts[5])
+                        {
+                            map[x, y].Style = styleMud;
+                        }
+                        else if (floorencount == encounts[6])
+                        {
+                            map[x, y].Style = styleDanger2;
+                        }
+                        else if (floorencount == encounts[7])
+                        {
+                            map[x, y].Style = stylePole;
                         }
                         break;
                 }

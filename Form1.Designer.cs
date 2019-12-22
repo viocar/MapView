@@ -43,6 +43,8 @@
             this.map = new System.Windows.Forms.DataGridView();
             this.dangerCBox = new System.Windows.Forms.CheckBox();
             this.EO4Box = new System.Windows.Forms.CheckBox();
+            this.button2 = new System.Windows.Forms.Button();
+            this.groupsBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.map)).BeginInit();
             this.SuspendLayout();
             // 
@@ -180,11 +182,33 @@
             this.EO4Box.Text = "+EO4";
             this.EO4Box.UseVisualStyleBackColor = true;
             // 
+            // button2
+            // 
+            this.button2.Location = new System.Drawing.Point(807, 240);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(75, 23);
+            this.button2.TabIndex = 15;
+            this.button2.Text = "Save As...";
+            this.button2.UseVisualStyleBackColor = true;
+            // 
+            // groupsBox
+            // 
+            this.groupsBox.AutoSize = true;
+            this.groupsBox.Location = new System.Drawing.Point(784, 217);
+            this.groupsBox.Name = "groupsBox";
+            this.groupsBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.groupsBox.Size = new System.Drawing.Size(98, 17);
+            this.groupsBox.TabIndex = 16;
+            this.groupsBox.Text = "Encount Group";
+            this.groupsBox.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(886, 736);
+            this.Controls.Add(this.groupsBox);
+            this.Controls.Add(this.button2);
             this.Controls.Add(this.EO4Box);
             this.Controls.Add(this.dangerCBox);
             this.Controls.Add(this.map);
@@ -224,6 +248,8 @@
         private System.Windows.Forms.DataGridView map;
         private System.Windows.Forms.CheckBox dangerCBox;
         private System.Windows.Forms.CheckBox EO4Box;
+        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.CheckBox groupsBox;
     }
 }
 
