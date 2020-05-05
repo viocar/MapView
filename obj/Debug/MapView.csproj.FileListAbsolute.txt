@@ -1,4 +1,3 @@
-D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.Form1.resources
 D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.Properties.Resources.resources
 D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.csproj.GenerateResource.Cache
 D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\bin\Debug\MapView.exe.config
@@ -7,3 +6,4 @@ D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\bin\De
 D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.exe
 D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.pdb
 D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.csprojAssemblyReference.cache
+D:\Program Files (x86)\Microsoft Visual Studio\2017\repos\MapView\MapView\obj\Debug\MapView.MapView.resources
