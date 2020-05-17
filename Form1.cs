@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
+using System.Media;
 
 namespace MapView
 {
@@ -20,7 +21,7 @@ namespace MapView
         byte[] ydd_file;
         bool danger_state = false;
         bool group_state = false;
-        //bool eo4_state = false;
+        bool n3ds_state = false;
         bool ydd_show_state = false;
         int ymd_pos = 0;
         int ydd_pos = 0;
@@ -30,6 +31,7 @@ namespace MapView
         int ymd_danger = 0;
         int ydd_type = 0;
         int ydd_angle = 0;
+        bool file_loaded = false;
         int[] current_cell = new int[2] { 0, 0 };
         List<TextBox> textboxes = new List<TextBox>();
         List<int> encounts = new List<int>();
@@ -40,7 +42,7 @@ namespace MapView
             loadButton.Click += new EventHandler(button1_Click);
             saveButton.Click += new EventHandler(button2_Click);
             map.CellEnter += new DataGridViewCellEventHandler(map_CellEnter);
-            //map.KeyDown += new DataGridViewCellEventHandler(map_KeyDown);
+            map.KeyDown += new KeyEventHandler(map_KeyDown);
             ymd_DangerCBox.CheckedChanged += new EventHandler(ymd_DangerCBox_CheckedChanged);
             ymd_GroupBox.CheckedChanged += new EventHandler(ymd_GroupBox_CheckedChanged);
             ydd_ShowBox.CheckedChanged += new EventHandler(ydd_ShowBox_CheckedChanged);
@@ -50,6 +52,7 @@ namespace MapView
             ymd_DangerBox.KeyDown += new KeyEventHandler(ymd_DangerBox_KeyDown);
             ydd_TypeBox.KeyDown += new KeyEventHandler(ydd_TypeBox_KeyDown);
             ydd_AngleBox.KeyDown += new KeyEventHandler(ydd_AngleBox_KeyDown);
+            N3DSBox.CheckedChanged += new EventHandler(N3DSBox_CheckedChanged);
         }
         private void ymd_DangerCBox_CheckedChanged(object sender, EventArgs e) //danger mode. needs adjustments for EO2U
         {
@@ -66,12 +69,28 @@ namespace MapView
             ydd_show_state = !ydd_show_state;
             InitializeMapCells();
         }
+        private void N3DSBox_CheckedChanged(object sender, EventArgs e)
+        {
+            n3ds_state = !n3ds_state;
+            ymd_data = new byte[0x396C]; //0x396C = EO4+, 0x20D0 = EO3
+            ydd_data = new byte[0x834]; //dunno EO4+
+            file_loaded = false;
+            ydd_TypeBox.Enabled = !ydd_TypeBox.Enabled;
+            ydd_AngleBox.Enabled = !ydd_AngleBox.Enabled;
+            ydd_ShowBox.Enabled = !ydd_ShowBox.Enabled;
+            saveButton.Enabled = !saveButton.Enabled;
+            ymd_xy.Visible = !ymd_xy.Visible;
+            ymd_xy_val.Visible = !ymd_xy_val.Visible;
+            ydd_xy.Visible = !ydd_xy.Visible;
+            ydd_xy_val.Visible = !ydd_xy_val.Visible;
+            InitializeMapCells();
+        }
         private void button1_Click(object sender, EventArgs e) //load a .ymd
         {
             OpenFileDialog openFileDialog1 = new OpenFileDialog
             {
                 Filter = ".ymd File|*.ymd",
-                Title = "Select MapDat folder",
+                Title = "Select .ymd File",
                 InitialDirectory = GetInitialDirectory() //should probably store the last directory but fuck it
             };
             if (openFileDialog1.ShowDialog() == DialogResult.OK)
@@ -79,15 +98,34 @@ namespace MapView
                 String map_id = Path.GetFileNameWithoutExtension(openFileDialog1.FileName);
                 String directory_name = Path.GetDirectoryName(openFileDialog1.FileName);
                 String ymd_name = openFileDialog1.FileName;
-                String ydd_name = String.Concat(directory_name.Substring(0, directory_name.Length - 4), "\\Ydd\\", map_id, ".ydd");
                 ymd_file = File.ReadAllBytes(ymd_name);
-                ydd_file = File.ReadAllBytes(ydd_name);
-                Array.Copy(ymd_file, 0x90, ymd_data, 0, 0x20D0); //something like 0x10A and 0x396C for EO4 - I dunno, check it if you need that functionality again
-                Array.Copy(ydd_file, 0x1804, ydd_data, 0, 0x834);
+                ulong magic_number = BitConverter.ToUInt64(ymd_file, 0);
+                if (n3ds_state && magic_number == 0x31303034444D4759) //this is a sloppy check
+                {
+                    Array.Copy(ymd_file, 0x10A, ymd_data, 0, 0x396C); //something like 0x10A and 0x396C for EO4 - I dunno, check it if you need that functionality again
+                    file_loaded = true;
+                }
+                else if(!n3ds_state && magic_number == 0x33303033444D4759)
+                {
+                    String ydd_name = String.Concat(directory_name.Substring(0, directory_name.Length - 4), "\\Ydd\\", map_id, ".ydd");
+                    ydd_file = File.ReadAllBytes(ydd_name);
+                    Array.Copy(ymd_file, 0x90, ymd_data, 0, 0x20D0); //something like 0x10A and 0x396C for EO4 - I dunno, check it if you need that functionality again
+                    Array.Copy(ydd_file, 0x1804, ydd_data, 0, 0x834);
+                    file_loaded = true;
+                }
                 Properties.Settings.Default.LastPath = Path.GetDirectoryName(openFileDialog1.FileName);
-                CreateEncountList();
-                InitializeMapCells();
-                InitializeSelection();
+                Properties.Settings.Default.Save();
+                if (file_loaded) 
+                {
+                    CreateEncountList();
+                    InitializeMapCells();
+                    InitializeSelection();
+                }
+                else
+                {
+                    SystemSounds.Asterisk.Play();
+                    MessageBox.Show("Unable to load file. Should the 3DS box be checked?");
+                }
             }
         }
         private string GetInitialDirectory()
@@ -106,7 +144,7 @@ namespace MapView
                 return dir;
             }
         }
-        private void button2_Click(object sender, EventArgs e) //save as
+        private void button2_Click(object sender, EventArgs e) //only EO3 for now
         {
             SaveFileDialog saveFileDialog1 = new SaveFileDialog
             {
@@ -140,6 +178,24 @@ namespace MapView
             textboxes[3].Text = ymd_danger.ToString("X2");
             textboxes[4].Text = ydd_type.ToString("X2");
             textboxes[5].Text = ydd_angle.ToString("X2");
+            ymd_xy_val.Text = (e.ColumnIndex * 8 + (e.RowIndex * 0x118)).ToString("X2");
+            ydd_xy_val.Text = (e.ColumnIndex * 2 + (e.RowIndex * 0x46)).ToString("X2");
+        }
+        private void map_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                if (!ydd_show_state)
+                {
+                    ymd_TypeBox.Focus();
+                }
+                else
+                {
+                    ydd_TypeBox.Focus();
+                }
+            }
         }
         private void ymd_TypeBox_KeyDown(object sender, KeyEventArgs e) //these pass through to a handler to reduce repeated code
         {
@@ -148,6 +204,7 @@ namespace MapView
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 boxHandler(0);
+                map.Focus();
             }
         }
         private void ymd_ValueBox_KeyDown(object sender, KeyEventArgs e)
@@ -157,6 +214,7 @@ namespace MapView
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 boxHandler(1);
+                map.Focus();
             }
         }
         private void ymd_EncBox_KeyDown(object sender, KeyEventArgs e)
@@ -166,6 +224,7 @@ namespace MapView
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 boxHandler(2);
+                map.Focus();
             }
         }
         private void ymd_DangerBox_KeyDown(object sender, KeyEventArgs e)
@@ -175,6 +234,7 @@ namespace MapView
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 boxHandler(3);
+                map.Focus();
             }
         }
         private void ydd_TypeBox_KeyDown(object sender, KeyEventArgs e)
@@ -184,6 +244,7 @@ namespace MapView
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 boxHandler(4);
+                map.Focus();
             }
         }
         private void ydd_AngleBox_KeyDown(object sender, KeyEventArgs e)
@@ -193,42 +254,50 @@ namespace MapView
                 e.Handled = true;
                 e.SuppressKeyPress = true;
                 boxHandler(5);
+                map.Focus();
             }
         }
         private void boxHandler(int id)
         {
-            ushort data_entry = 0;
-            if (ushort.TryParse(textboxes[id].Text, System.Globalization.NumberStyles.HexNumber, null, out data_entry)) //textboxes[id] lets us get the correct textbox without needing lots of repeat code
+            if (!n3ds_state)
             {
-                data_entry = Convert.ToUInt16(textboxes[id].Text, 16);
-                Console.WriteLine(data_entry);
-                SetMapDataForTile(current_cell[0], current_cell[1], id, data_entry); //id is which one we fill
-                DrawTile(current_cell[0], current_cell[1]);
+                ushort data_entry = 0;
+                if (ushort.TryParse(textboxes[id].Text, System.Globalization.NumberStyles.HexNumber, null, out data_entry)) //textboxes[id] lets us get the correct textbox without needing lots of repeat code
+                {
+                    data_entry = Convert.ToUInt16(textboxes[id].Text, 16);
+                    SetMapDataForTile(current_cell[0], current_cell[1], id, data_entry); //id is which one we fill
+                    DrawTile(current_cell[0], current_cell[1]);
+                }
             }
         }
         private void InitializeMapCells()
         {
-            map.ColumnCount = 35; //ehhh this is mostly okay but it'll break on EO4 caves as well as the ocean voyage
-            map.RowCount = 30;
-            map.RowHeadersWidth = 12;
-            map.ColumnHeadersHeight = 4;
-            for (int y = 0; y < 30; y++) //y first because we iterate through x mainly
+            if (file_loaded)
             {
-                for (int x = 0; x < 35; x++)
+                map.ColumnCount = 35; //ehhh this is mostly okay but it'll break on EO4 caves as well as the ocean voyage
+                map.RowCount = 30;
+                map.RowHeadersWidth = 12;
+                map.ColumnHeadersHeight = 4;
+                for (int y = 0; y < 30; y++) //y first because we iterate through x mainly
                 {
-                    DrawTile(x, y);
+                    for (int x = 0; x < 35; x++)
+                    {
+                        DrawTile(x, y);
+                    }
+                }
+                foreach (DataGridViewColumn column in map.Columns) //this is not actually "data", so we don't want to be able to screw it up by sorting it
+                {
+                    column.SortMode = DataGridViewColumnSortMode.NotSortable;
                 }
             }
-            foreach (DataGridViewColumn column in map.Columns) //this is not actually "data", so we don't want to be able to screw it up by sorting it
+            else
             {
-                column.SortMode = DataGridViewColumnSortMode.NotSortable;
+                map.Columns.Clear();
+                map.Refresh();
             }
         }
         private void InitializeSelection()
         {
-            danger_state = false;
-            group_state = false;
-            ydd_show_state = false;
             ymd_pos = 0;
             ydd_pos = 0;
             ymd_type = 0;
@@ -245,15 +314,22 @@ namespace MapView
             textboxes[4].Text = ydd_type.ToString("X2");
             textboxes[5].Text = ydd_angle.ToString("X2");
         }
-        private void CreateEncountList() //EO3 only because I don't care
+        private void CreateEncountList()
         {
             int pos = 0;
             encounts.Clear();
             for (int x = 0; x < 1050; x++)
             {
                 ymd_encount = 0;
-                pos = 2 + (x * 8);
-                int encval = ymd_data[pos];
+                if (n3ds_state)
+                {
+                    pos = 6 + (x * 14);
+                }
+                else
+                {
+                    pos = 2 + (x * 8);
+                }
+                int encval = BitConverter.ToUInt16(ymd_file, pos);
                 if (!encounts.Contains(encval))
                 {
                     encounts.Add(encval);
@@ -262,21 +338,40 @@ namespace MapView
         }
         private void GetMapDataForTile(int x, int y)
         {
-            ymd_pos = (x * 8 + (y * 0x118));
-            ydd_pos = (x * 2 + (y * 0x46));
-            //ymd data
-            ymd_type = ymd_data[ymd_pos]; //begin getting the data out of the array
-            ymd_value = ymd_data[ymd_pos + 1];
-            ymd_encount = 0;
-            if (ymd_data[ymd_pos + 3] == 00)
+            if (n3ds_state)
             {
-                ymd_encount = ymd_data[ymd_pos + 2];
+                ymd_pos = (x * 14 + (y * 0x1EA));
+                ymd_type = ymd_data[ymd_pos + 2]; //begin getting the data out of the array
+                ymd_value = ymd_data[ymd_pos + 4];
+                ymd_encount = 0;
+                if (ymd_data[ymd_pos + 7] == 0)
+                {
+                    ymd_encount = ymd_data[ymd_pos + 6];
+                }
+                else
+                {
+                    ymd_encount = BitConverter.ToUInt16(ymd_file, ymd_pos + 6); //this is how you convert little endian bytes in c#
+                }
+                ymd_danger = ymd_data[ymd_pos + 8];
             }
             else
             {
-                ymd_encount = BitConverter.ToUInt16(new byte[2] { (byte)ymd_data[ymd_pos + 3], (byte)ymd_data[ymd_pos + 2] }, 0); //this is how you convert little endian bytes in c#
+                ymd_pos = (x * 8 + (y * 0x118));
+                ydd_pos = (x * 2 + (y * 0x46));
+                //ymd data
+                ymd_type = ymd_data[ymd_pos]; //begin getting the data out of the array
+                ymd_value = ymd_data[ymd_pos + 1];
+                ymd_encount = 0;
+                if (ymd_data[ymd_pos + 3] == 00)
+                {
+                    ymd_encount = ymd_data[ymd_pos + 2];
+                }
+                else
+                {
+                    ymd_encount = BitConverter.ToUInt16(ymd_data, ymd_pos + 2); //this is how you convert little endian bytes in c#
+                }
+                ymd_danger = ymd_data[ymd_pos + 4];
             }
-            ymd_danger = ymd_data[ymd_pos + 4];
             //ydd data
             ydd_type = ydd_data[ydd_pos];
             ydd_angle = ydd_data[ydd_pos + 1];
@@ -471,6 +566,14 @@ namespace MapView
             }
             if (danger_state)
             {
+                if (n3ds_state && ymd_danger > 0)
+                {
+                    ymd_danger = ymd_danger >> 2;
+                    if (ymd_danger == 0)
+                    {
+                        ymd_danger = 1;
+                    }
+                }
                 switch (ymd_type)
                 {
                     default:
@@ -593,6 +696,11 @@ namespace MapView
         }
 
         private void ymd_label_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void MapView_Load(object sender, EventArgs e)
         {
 
         }

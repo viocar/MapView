@@ -37,10 +37,10 @@
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.loadButton = new System.Windows.Forms.Button();
-            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.map = new System.Windows.Forms.DataGridView();
             this.ymd_DangerCBox = new System.Windows.Forms.CheckBox();
-            this.EO4Box = new System.Windows.Forms.CheckBox();
+            this.N3DSBox = new System.Windows.Forms.CheckBox();
             this.saveButton = new System.Windows.Forms.Button();
             this.ymd_GroupBox = new System.Windows.Forms.CheckBox();
             this.openFolder = new System.Windows.Forms.FolderBrowserDialog();
@@ -51,6 +51,10 @@
             this.ydd_AngleBox = new System.Windows.Forms.TextBox();
             this.ydd_TypeBox = new System.Windows.Forms.TextBox();
             this.ydd_ShowBox = new System.Windows.Forms.CheckBox();
+            this.ymd_xy = new System.Windows.Forms.Label();
+            this.ydd_xy = new System.Windows.Forms.Label();
+            this.ydd_xy_val = new System.Windows.Forms.Label();
+            this.ymd_xy_val = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.map)).BeginInit();
             this.SuspendLayout();
             // 
@@ -136,9 +140,9 @@
             this.loadButton.UseVisualStyleBackColor = true;
             this.loadButton.Click += new System.EventHandler(this.button1_Click_1);
             // 
-            // openFileDialog1
+            // openFileDialog
             // 
-            this.openFileDialog1.FileName = "openFileDialog1";
+            this.openFileDialog.FileName = "openFileDialog1";
             // 
             // map
             // 
@@ -161,16 +165,16 @@
             this.ymd_DangerCBox.UseVisualStyleBackColor = true;
             this.ymd_DangerCBox.CheckedChanged += new System.EventHandler(this.dangerCBox_CheckedChanged_1);
             // 
-            // EO4Box
+            // N3DSBox
             // 
-            this.EO4Box.AutoSize = true;
-            this.EO4Box.Location = new System.Drawing.Point(829, 670);
-            this.EO4Box.Name = "EO4Box";
-            this.EO4Box.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.EO4Box.Size = new System.Drawing.Size(53, 17);
-            this.EO4Box.TabIndex = 14;
-            this.EO4Box.Text = "+EO4";
-            this.EO4Box.UseVisualStyleBackColor = true;
+            this.N3DSBox.AutoSize = true;
+            this.N3DSBox.Location = new System.Drawing.Point(836, 670);
+            this.N3DSBox.Name = "N3DSBox";
+            this.N3DSBox.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.N3DSBox.Size = new System.Drawing.Size(47, 17);
+            this.N3DSBox.TabIndex = 14;
+            this.N3DSBox.Text = "3DS";
+            this.N3DSBox.UseVisualStyleBackColor = true;
             // 
             // saveButton
             // 
@@ -262,11 +266,53 @@
             this.ydd_ShowBox.Text = "Show";
             this.ydd_ShowBox.UseVisualStyleBackColor = true;
             // 
+            // ymd_xy
+            // 
+            this.ymd_xy.AutoSize = true;
+            this.ymd_xy.Location = new System.Drawing.Point(833, 322);
+            this.ymd_xy.Name = "ymd_xy";
+            this.ymd_xy.Size = new System.Drawing.Size(48, 13);
+            this.ymd_xy.TabIndex = 24;
+            this.ymd_xy.Text = "YMD XY";
+            // 
+            // ydd_xy
+            // 
+            this.ydd_xy.AutoSize = true;
+            this.ydd_xy.Location = new System.Drawing.Point(833, 344);
+            this.ydd_xy.Name = "ydd_xy";
+            this.ydd_xy.Size = new System.Drawing.Size(47, 13);
+            this.ydd_xy.TabIndex = 25;
+            this.ydd_xy.Text = "YDD XY";
+            // 
+            // ydd_xy_val
+            // 
+            this.ydd_xy_val.AutoSize = true;
+            this.ydd_xy_val.Location = new System.Drawing.Point(786, 344);
+            this.ydd_xy_val.Name = "ydd_xy_val";
+            this.ydd_xy_val.Size = new System.Drawing.Size(37, 13);
+            this.ydd_xy_val.TabIndex = 27;
+            this.ydd_xy_val.Text = "          ";
+            this.ydd_xy_val.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            // 
+            // ymd_xy_val
+            // 
+            this.ymd_xy_val.AutoSize = true;
+            this.ymd_xy_val.Location = new System.Drawing.Point(786, 322);
+            this.ymd_xy_val.Name = "ymd_xy_val";
+            this.ymd_xy_val.Size = new System.Drawing.Size(37, 13);
+            this.ymd_xy_val.TabIndex = 26;
+            this.ymd_xy_val.Text = "          ";
+            this.ymd_xy_val.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            // 
             // MapView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(886, 736);
+            this.Controls.Add(this.ydd_xy_val);
+            this.Controls.Add(this.ymd_xy_val);
+            this.Controls.Add(this.ydd_xy);
+            this.Controls.Add(this.ymd_xy);
             this.Controls.Add(this.ydd_ShowBox);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.label6);
@@ -276,7 +322,7 @@
             this.Controls.Add(this.ymd_label);
             this.Controls.Add(this.ymd_GroupBox);
             this.Controls.Add(this.saveButton);
-            this.Controls.Add(this.EO4Box);
+            this.Controls.Add(this.N3DSBox);
             this.Controls.Add(this.ymd_DangerCBox);
             this.Controls.Add(this.map);
             this.Controls.Add(this.loadButton);
@@ -290,6 +336,7 @@
             this.Controls.Add(this.ymd_TypeBox);
             this.Name = "MapView";
             this.Text = "MapView";
+            this.Load += new System.EventHandler(this.MapView_Load);
             ((System.ComponentModel.ISupportInitialize)(this.map)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -307,10 +354,10 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Button loadButton;
-        private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.OpenFileDialog openFileDialog;
         private System.Windows.Forms.DataGridView map;
         private System.Windows.Forms.CheckBox ymd_DangerCBox;
-        private System.Windows.Forms.CheckBox EO4Box;
+        private System.Windows.Forms.CheckBox N3DSBox;
         private System.Windows.Forms.Button saveButton;
         private System.Windows.Forms.CheckBox ymd_GroupBox;
         private System.Windows.Forms.FolderBrowserDialog openFolder;
@@ -321,6 +368,10 @@
         private System.Windows.Forms.TextBox ydd_AngleBox;
         private System.Windows.Forms.TextBox ydd_TypeBox;
         private System.Windows.Forms.CheckBox ydd_ShowBox;
+        private System.Windows.Forms.Label ymd_xy;
+        private System.Windows.Forms.Label ydd_xy;
+        private System.Windows.Forms.Label ydd_xy_val;
+        private System.Windows.Forms.Label ymd_xy_val;
     }
 }
 
