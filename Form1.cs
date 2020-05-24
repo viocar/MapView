@@ -78,7 +78,6 @@ namespace MapView
             ydd_TypeBox.Enabled = !ydd_TypeBox.Enabled;
             ydd_AngleBox.Enabled = !ydd_AngleBox.Enabled;
             ydd_ShowBox.Enabled = !ydd_ShowBox.Enabled;
-            saveButton.Enabled = !saveButton.Enabled;
             ymd_xy.Visible = !ymd_xy.Visible;
             ymd_xy_val.Visible = !ymd_xy_val.Visible;
             ydd_xy.Visible = !ydd_xy.Visible;
@@ -157,11 +156,18 @@ namespace MapView
                 String map_id = Path.GetFileNameWithoutExtension(saveFileDialog1.FileName);
                 String directory_name = Path.GetDirectoryName(saveFileDialog1.FileName);
                 String ymd_name = saveFileDialog1.FileName;
-                String ydd_name = String.Concat(directory_name.Substring(0, directory_name.Length - 4), "\\Ydd\\", map_id, ".ydd");
-                Array.Copy(ymd_data, 0, ymd_file, 0x90, 0x20D0); //something like 0x10A and 0x396C for EO4 - I dunno, check it if you need that functionality again
-                Array.Copy(ydd_data, 0, ydd_file, 0x1804, 0x834);
+                if (!n3ds_state)
+                {
+                    String ydd_name = String.Concat(directory_name.Substring(0, directory_name.Length - 4), "\\Ydd\\", map_id, ".ydd");
+                    Array.Copy(ydd_data, 0, ydd_file, 0x1804, 0x834);
+                    File.WriteAllBytes(ydd_name, ydd_file);
+                    Array.Copy(ymd_data, 0, ymd_file, 0x90, 0x20D0); //something like 0x10A and 0x396C for EO4 - I dunno, check it if you need that functionality again
+                }
+                else
+                {
+                    Array.Copy(ymd_data, 0, ymd_file, 0x10A, 0x396C);
+                }
                 File.WriteAllBytes(ymd_name, ymd_file);
-                File.WriteAllBytes(ydd_name, ydd_file);
             }
         }
         private void map_CellEnter(object sender, DataGridViewCellEventArgs e)
@@ -259,15 +265,12 @@ namespace MapView
         }
         private void boxHandler(int id)
         {
-            if (!n3ds_state)
+            ushort data_entry = 0;
+            if (ushort.TryParse(textboxes[id].Text, System.Globalization.NumberStyles.HexNumber, null, out data_entry)) //textboxes[id] lets us get the correct textbox without needing lots of repeat code
             {
-                ushort data_entry = 0;
-                if (ushort.TryParse(textboxes[id].Text, System.Globalization.NumberStyles.HexNumber, null, out data_entry)) //textboxes[id] lets us get the correct textbox without needing lots of repeat code
-                {
-                    data_entry = Convert.ToUInt16(textboxes[id].Text, 16);
-                    SetMapDataForTile(current_cell[0], current_cell[1], id, data_entry); //id is which one we fill
-                    DrawTile(current_cell[0], current_cell[1]);
-                }
+                data_entry = Convert.ToUInt16(textboxes[id].Text, 16);
+                SetMapDataForTile(current_cell[0], current_cell[1], id, data_entry); //id is which one we fill
+                DrawTile(current_cell[0], current_cell[1]);
             }
         }
         private void InitializeMapCells()
@@ -298,21 +301,18 @@ namespace MapView
         }
         private void InitializeSelection()
         {
-            ymd_pos = 0;
-            ydd_pos = 0;
-            ymd_type = 0;
-            ymd_value = 0;
-            ymd_encount = 0;
-            ymd_danger = 0;
-            ydd_type = 0;
-            ydd_angle = 0;
-            current_cell = new int[2] { 0, 0 };
+            int row = map.CurrentCell.RowIndex;
+            int column = map.CurrentCell.ColumnIndex;
+            GetMapDataForTile(column, row);
+            current_cell[0] = column; current_cell[1] = row;
             textboxes[0].Text = ymd_type.ToString("X2"); //populate the text boxes
             textboxes[1].Text = ymd_value.ToString("X2");
             textboxes[2].Text = ymd_encount.ToString("X2");
             textboxes[3].Text = ymd_danger.ToString("X2");
             textboxes[4].Text = ydd_type.ToString("X2");
             textboxes[5].Text = ydd_angle.ToString("X2");
+            ymd_xy_val.Text = (column * 8 + (row * 0x118)).ToString("X2");
+            current_cell = new int[2] { 0, 0 };
         }
         private void CreateEncountList()
         {
@@ -381,32 +381,63 @@ namespace MapView
             byte[] b = new byte[2];
             b[0] = (byte)value;
             b[1] = (byte)(((uint)value >> 8) & 0xFF);
-            ymd_pos = (x * 8 + (y * 0x118));
-            ydd_pos = (x * 2 + (y * 0x46));
-            switch (id)
+            if (!n3ds_state)
             {
-                case 0:
-                    ymd_data[ymd_pos] = b[0];
-                    break;
-                case 1:
-                    ymd_data[ymd_pos + 1] = b[0];
-                    break;
-                case 2:
-                    ymd_data[ymd_pos + 2] = b[0];
-                    ymd_data[ymd_pos + 3] = b[1];
-                    break;
-                case 3:
-                    ymd_data[ymd_pos + 4] = b[0];
-                    break;
-                case 4:
-                    ydd_data[ydd_pos] = b[0];
-                    break;
-                case 5:
-                    ydd_data[ydd_pos + 1] = b[0];
-                    break;
-                default:
-                    Debug.WriteLine(String.Concat("box id passed invalid ID", id));
-                    break;
+                ymd_pos = (x * 8 + (y * 0x118));
+                ydd_pos = (x * 2 + (y * 0x46));
+                switch (id)
+                {
+                    case 0:
+                        ymd_data[ymd_pos] = b[0];
+                        break;
+                    case 1:
+                        ymd_data[ymd_pos + 1] = b[0];
+                        break;
+                    case 2:
+                        ymd_data[ymd_pos + 2] = b[0];
+                        ymd_data[ymd_pos + 3] = b[1];
+                        break;
+                    case 3:
+                        ymd_data[ymd_pos + 4] = b[0];
+                        break;
+                    case 4:
+                        ydd_data[ydd_pos] = b[0];
+                        break;
+                    case 5:
+                        ydd_data[ydd_pos + 1] = b[0];
+                        break;
+                    default:
+                        Debug.WriteLine(String.Concat("box id passed invalid ID", id));
+                        break;
+                }
+            }
+            else
+            {
+                ymd_pos = (x * 0xE + (y * 0x1EA));
+                switch (id)
+                {
+                    case 0:
+                        ymd_data[ymd_pos + 2] = b[0];
+                        ymd_data[ymd_pos + 3] = b[1];
+                        break;
+                    case 1:
+                        ymd_data[ymd_pos + 4] = b[0];
+                        ymd_data[ymd_pos + 5] = b[1];
+                        break;
+                    case 2:
+                        ymd_data[ymd_pos + 6] = b[0];
+                        ymd_data[ymd_pos + 7] = b[1];
+                        break;
+                    case 3:
+                        ymd_data[ymd_pos + 8] = b[0];
+                        break;
+                    case 4:
+                    case 5:
+                        break;
+                    default:
+                        Debug.WriteLine(String.Concat("box id passed invalid ID", id));
+                        break;
+                }
             }
         }
         private void DrawTile(int x, int y)
